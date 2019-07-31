@@ -7,6 +7,8 @@ import tensorflow as tf
 import pickle
 import logging
 import matplotlib
+# matplotlib.use( 'TkAgg' )
+>>>>>>> 8d7067fd0c25d7afae44297a1bdcff2793812205
 import matplotlib.pyplot as plt
 from tensorflow.keras import applications
 from PIL import Image
@@ -123,6 +125,7 @@ class Ann():
         return np.round(np.squeeze(predicted))
 
     @staticmethod
+
     def test_loop(model, test_folder, width, height, out_filename):
         test_datagen = ImageDataGenerator(rescale=1. / 255)
         # print(test_folder)
@@ -141,6 +144,19 @@ class Ann():
         d = {'id': [n for n in range(len(predict))], 
              'label': ['dirty' if x > 0.5 else 'cleaned' for x in predict]}
              # 'label': ['dirty' if np.argmax(x) == 1 else 'clean' for x in predict]}
+    def test_model_loop(model, test_folder, width, height):
+        test_datagen = ImageDataGenerator(rescale=1. / 255)
+        test_generator = test_datagen.flow_from_directory(
+            directory=test_folder,
+            target_size=(height, width),
+            color_mode="rgb",
+            batch_size=8)
+        STEP_SIZE_TEST = test_generator.n // test_generator.n.batch_size
+        predict = model.predict_generator(test_generator,
+                                          steps=STEP_SIZE_TEST)
+        print(predict)
+        '''
+
         result_df = DataFrame(data=d)
         result_df.to_csv(out_filename, index=False)
         print(result_df)
@@ -190,6 +206,13 @@ class Ann():
 class DishAnn(Ann):
     def __init__(self, df, width, height, epochs):
         super().__init__(df)
+        return result_df
+        '''
+
+
+class DishAnn(Ann):
+    def __init__(self, df, width, height, epochs):
+        super.__init__(df)
         self.epocs = epochs
         self.width = width
         self.height = height
@@ -223,6 +246,10 @@ class DishAnn(Ann):
         STEP_SIZE_VALID = 80
         # STEP_SIZE_TRAIN = train_generator.n // train_generator.batch_size
         # STEP_SIZE_VALID = valid_generator.n // valid_generator.batch_size
+        model.add(Dense(1, kernel_initializer='normal', activation='sigmoid'))
+        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+        STEP_SIZE_TRAIN = train_generator.n // train_generator.batch_size
+        STEP_SIZE_VALID = valid_generator.n // valid_generator.batch_size
         history = model.fit_generator(generator=train_generator,
                                       steps_per_epoch=STEP_SIZE_TRAIN,
                                       validation_data=valid_generator,
@@ -231,12 +258,36 @@ class DishAnn(Ann):
         # print(history.history)
         return history, model
 
+
 class DishAnnInceptionResNetV2(Ann):
     def __init__(self, df, width, height, epochs):
         super().__init__(df)
         self.epocs = epochs
         self.width = width
         self.height = height
+    def get_class_model(self):
+        self.split_data(self, size=0.2, shuffle_bool=True)
+        datagen = ImageDataGenerator(rescale=1. / 255)
+        train_generator = datagen.flow_from_dataframe(
+            dataframe=self.train_df,
+            directory=None,
+            color_mode='rgb',
+            x_col="imgname",
+            y_col="label",
+            class_mode="binary",
+            target_size=(self.height, self.width),
+            batch_size=8)
+        valid_generator = datagen.flow_from_dataframe(
+            dataframe=self.valid_df,
+            directory=None,
+            color_mode='rgb',
+            x_col="imgname",
+            y_col="label",
+            class_mode="binary",
+            target_size=(self.height, self.width),
+            batch_size=8)
+        _, model = self.train_cat_model(train_generator, valid_generator, self.epocs)
+        return model
 
     @staticmethod
     def train_model(train_generator, valid_generator, width, height, epochs_to_train):
@@ -308,6 +359,34 @@ def test():
     # print(db_isnst.df)
     # db_isnst.show_train_image(0)
 
+    # db_inst.create_df(train_folder)
+    # db_inst.save_dataframe(train_df_name)
+    db_inst.read_dataframe(train_df_name)
+    width, heigth = db_inst.get_image_size(0)
+    print(width, heigth)
+    # db_inst.show_train_image(0)
+    # df = db_isnst.df
+    # print(df)
+    # print(df.memory_usage(index=True, deep=True))
+    '''
+    ann = WavAnn(df)
+    # ann.truncate_data(rows_to_store=10)
+    ann.split_data()
+    ann.normalize_df()
+    # model = ann.get_reg_conv_model()
+    model = ann.get_reg_model()
+    d = ann.test_reg_model_loop(model)
+    # d = ann.test_cat_model_loop(model)
+    # d = ann.test_reg_conv_model_loop(model)
+    xlsx_suf = '.xlsx'
+    bname = PurePath(os.getcwd(), 'WavAnn_32s_reg_4994_2').with_suffix(xlsx_suf)
+    data_sh_name = 'Data'
+    graph_sh_name = 'Graphs'
+    report_creator = Report(d)
+    report_creator.create_tn_class_df()
+    report_creator.create_histogram_df()
+    report_creator.excel(bname, data_sh_name, graph_sh_name)
+    '''
 
 if __name__ == "__main__":
     test()
